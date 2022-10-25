@@ -8,7 +8,7 @@
 #include "vec2.hpp"
 #include "wall.hpp"
 
-const float MOVE_UNITS_PER_SECOND = 300.0f;
+const float MOVE_UNITS_PER_SECOND = 400.0f;
 
 class Game : public olc::PixelGameEngine
 {
@@ -20,20 +20,18 @@ public:
 
 	float playerAngle;
 	float mouseXHold;
-	double playerX, playerY;
+	Coords pos;
 
 	std::vector<Wall> walls = {
-		Wall(Vec2(-100, 100), Vec2(-100, 200), 0x00, 0xFF, 0xFF),
-		Wall(Vec2(-100, 200), Vec2(100, 200), 0xFF, 0x00, 0x00),
-		Wall(Vec2(100, 200), Vec2(100, 100), 0x00, 0xFF, 0x00)
+		Wall(Coords(-150, 100), Coords(-150, 400), 0x00, 0xFF, 0xFF),
+		Wall(Coords(-150, 400), Coords(150, 400), 0xFF, 0x00, 0x00),
+		Wall(Coords(150, 400), Coords(150, 100), 0x00, 0xFF, 0x00)
 	};
 
 public:
 	bool OnUserCreate() override
 	{
 		playerAngle = 0;
-		playerX = 0;
-		playerY = 0;
 		POINT mousePos;
 		GetCursorPos(&mousePos);
 		mouseXHold = (float)mousePos.x;
@@ -44,32 +42,41 @@ public:
 	{
 		FillRect(0, 0, ScreenWidth(), ScreenHeight(), olc::BLACK);
 
-		Vec2 viewerPoint = Vec2(0, -128).rotate(playerAngle) + Vec2(playerX, playerY);
+		Coords cameraPoint = Coords(0, -128).rotate(playerAngle) + pos;
 
 		for (int x = 0; x < ScreenWidth(); x++)
 		{
 			double nearest = 1e10;
+			Coords holdCoords;
 			Wall* hold = NULL;
 
-			Vec2 screenPoint = Vec2(x - ScreenWidth() / 2, 0).rotate(playerAngle) + Vec2(playerX, playerY);
+			Coords screenPoint = Coords(x - ScreenWidth() / 2, 0).rotate(playerAngle) + pos;
 
-			Vec2 ray = (screenPoint - viewerPoint).unit();
+			Vec2 ray = (screenPoint - cameraPoint).unit();
 
 			for (auto& wall : walls)
 			{
-				double distance = wall.getCollision(screenPoint, ray);
-				if (distance > 0 && distance < nearest)
+				Coords collision;
+				bool didCollide = wall.getCollision(pos, ray, collision);
+				if (didCollide && collision.dist(pos) < nearest)
 				{
-					nearest = distance;
+					nearest = collision.dist(pos);
 					hold = &wall;
+					holdCoords = collision;
 				}
 			}
 
 			if (hold)
 			{
-				for (int y = (int)(nearest / 10); y < ScreenHeight() - nearest / 10; y++)
+				double adjusted = screenPoint.dist(holdCoords);
+
+				int height = std::min(ScreenHeight(), (int32_t)(ScreenHeight() * ScreenHeight() / adjusted));
+
+				int blank = (ScreenHeight() - height) / 2;
+
+				for (int y = blank; y <= ScreenHeight() - blank; y++)
 				{
-					Draw(x, y, olc::Pixel(hold->red, hold->green, hold->blue) / (float)(nearest / 100.0));
+					Draw(x, y, olc::Pixel(hold->red, hold->green, hold->blue) / (float)(adjusted / 100.0));
 				}
 			}
 		}
@@ -89,23 +96,23 @@ public:
 
 		if (GetKey(olc::Key::W).bHeld)
 		{
-			playerX -= sint;
-			playerY += cost;
+			pos.x -= sint;
+			pos.y += cost;
 		}
 		if (GetKey(olc::Key::S).bHeld)
 		{
-			playerX += sint;
-			playerY -= cost;
+			pos.x += sint;
+			pos.y -= cost;
 		}
 		if (GetKey(olc::Key::A).bHeld)
 		{
-			playerX -= cost;
-			playerY -= sint;
+			pos.x -= cost;
+			pos.y -= sint;
 		}
 		if (GetKey(olc::Key::D).bHeld)
 		{
-			playerX += cost;
-			playerY += sint;
+			pos.x += cost;
+			pos.y += sint;
 		}
 	}
 
@@ -122,7 +129,7 @@ public:
 int main()
 {
 	Game game;
-	if (game.Construct(256, 256, 2, 2))
+	if (game.Construct(320, 200, 3, 3))
 		game.Start();
 	return 0;
 }

@@ -36,3 +36,5 @@ public:
 	bool operator!=(Vec2 b);
 	Vec2 operator-();
 };
+
+typedef Vec2 Coords;

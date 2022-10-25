@@ -2,7 +2,7 @@
 
 #include "wall.hpp"
 
-double Wall::getCollision(Vec2 origin, Vec2 ray)
+bool Wall::getCollision(Coords origin, Vec2 ray, Coords &collision)
 {
 	Vec2 v1 = origin - a;
 	Vec2 v2 = b - a;
@@ -13,7 +13,8 @@ double Wall::getCollision(Vec2 origin, Vec2 ray)
 
 	if (t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0)
 	{
-		return t1;
+		collision = a + v2 * t2;
+		return true;
 	}
-	return -1.0;
+	return false;
 }
