@@ -2,8 +2,15 @@
 
 #include "wall.hpp"
 
-bool Wall::getCollision(Coords origin, Vec2 ray, Coords &collision)
+CollisionResult Wall::getCollision(Coords origin, Vec2 ray)
 {
+	CollisionResult ret = {
+		false,
+		Coords(),
+		0.0,
+		NULL
+	};
+
 	Vec2 v1 = origin - a;
 	Vec2 v2 = b - a;
 	Vec2 v3 = Vec2(-ray.y, ray.x);
@@ -13,8 +20,10 @@ bool Wall::getCollision(Coords origin, Vec2 ray, Coords &collision)
 
 	if (t1 >= 0.0 && t2 >= 0.0 && t2 <= 1.0)
 	{
-		collision = a + v2 * t2;
-		return true;
+		ret.didCollide = true;
+		ret.collisionPoint = a + v2 * t2;
+		ret.texturePosition = t2;
+		ret.sprite = sprite;
 	}
-	return false;
+	return ret;
 }

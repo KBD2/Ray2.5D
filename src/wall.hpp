@@ -1,6 +1,14 @@
 #pragma once
 
 #include "vec2.hpp"
+#include "olcPixelGameEngine.h"
+
+struct CollisionResult {
+	bool didCollide;
+	Coords collisionPoint;
+	double texturePosition;
+	olc::Sprite *sprite;
+};
 
 class Wall
 {
@@ -8,25 +16,21 @@ public:
 	Coords a;
 	Coords b;
 
-	int red, green, blue;
+	olc::Sprite *sprite;
 
 	Wall()
 	{
 		a = Coords(0, 0);
 		b = Coords(0, 0);
-		red = 0;
-		green = 0;
-		blue = 0;
+		sprite = NULL;
 	}
 
-	Wall(Coords _a, Coords _b, int _red, int _green, int _blue)
+	Wall(Coords _a, Coords _b, olc::Sprite *_sprite)
 	{
 		a = _a;
 		b = _b;
-		red = _red;
-		green = _green;
-		blue = _blue;
+		sprite = _sprite;
 	}
 
-	bool getCollision(Coords origin, Vec2 ray, Coords &collision);
+	CollisionResult getCollision(Coords origin, Vec2 ray);
 };

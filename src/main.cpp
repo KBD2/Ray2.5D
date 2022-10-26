@@ -3,12 +3,14 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <random>
 
 #include "olcPixelGameEngine.h"
 #include "vec2.hpp"
 #include "wall.hpp"
 
 const float MOVE_UNITS_PER_SECOND = 400.0f;
+const int MAX_DRAW_DISTANCE = 2000;
 
 class Game : public olc::PixelGameEngine
 {
@@ -18,67 +20,106 @@ public:
 		sAppName = "Game";
 	}
 
+	olc::Sprite wall;
+	olc::Sprite background;
+	olc::Sprite staticEffect;
+
 	float playerAngle;
 	float mouseXHold;
 	Coords pos;
 
-	std::vector<Wall> walls = {
-		Wall(Coords(-150, 100), Coords(-150, 400), 0x00, 0xFF, 0xFF),
-		Wall(Coords(-150, 400), Coords(150, 400), 0xFF, 0x00, 0x00),
-		Wall(Coords(150, 400), Coords(150, 100), 0x00, 0xFF, 0x00)
-	};
+	double cameraDistance;
+
+	std::vector<Wall> walls;
 
 public:
 	bool OnUserCreate() override
 	{
+		wall = olc::Sprite("Resources/wall.png");
+		background = olc::Sprite("Resources/background.png");
+		staticEffect = olc::Sprite("Resources/static.png");
+
+		walls = {
+			Wall(Coords(-100, 100), Coords(-100, 300), &wall),
+			Wall(Coords(-100, 300), Coords(100, 300), &wall),
+			Wall(Coords(100, 300), Coords(100, 100), &wall)
+		};
+
 		playerAngle = 0;
 		POINT mousePos;
 		GetCursorPos(&mousePos);
 		mouseXHold = (float)mousePos.x;
+
+		cameraDistance = -(ScreenWidth() / 2) / std::tan(0.7854);
+
 		return true;
 	}
 
-	void draw()
+	void draw(float fElapsedTime)
 	{
-		FillRect(0, 0, ScreenWidth(), ScreenHeight(), olc::BLACK);
+		std::random_device dev;
+		std::mt19937 rng(dev());
+		std::uniform_int_distribution<std::mt19937::result_type> distHoriz(0, staticEffect.width - ScreenWidth());
+		std::uniform_int_distribution<std::mt19937::result_type> distVert(0, staticEffect.height - ScreenHeight());
 
-		Coords cameraPoint = Coords(0, -128).rotate(playerAngle) + pos;
+		static double counter = 0;
+		counter += fElapsedTime;
+
+		DrawSprite(0, 0, &background);
+
+		Coords cameraPoint = Coords(0, cameraDistance).rotate(playerAngle) + pos;
 
 		for (int x = 0; x < ScreenWidth(); x++)
 		{
 			double nearest = 1e10;
-			Coords holdCoords;
-			Wall* hold = NULL;
+			CollisionResult hold = {
+				false,
+				Coords(),
+				0.0,
+				NULL
+			};
 
 			Coords screenPoint = Coords(x - ScreenWidth() / 2, 0).rotate(playerAngle) + pos;
 
 			Vec2 ray = (screenPoint - cameraPoint).unit();
+			//Vec2 ray = Vec2(0, 1).rotate(playerAngle + 1.570796 * (double)(ScreenWidth() / 2 - x) / ScreenWidth());
 
 			for (auto& wall : walls)
 			{
-				Coords collision;
-				bool didCollide = wall.getCollision(pos, ray, collision);
-				if (didCollide && collision.dist(pos) < nearest)
+				CollisionResult collision = wall.getCollision(pos, ray);
+				double distance = collision.collisionPoint.dist(pos);
+				if (!collision.didCollide || distance > MAX_DRAW_DISTANCE) continue;
+				else if (distance < nearest)
 				{
-					nearest = collision.dist(pos);
-					hold = &wall;
-					holdCoords = collision;
+					nearest = distance;
+					hold = collision;
 				}
 			}
 
-			if (hold)
+			if (hold.didCollide)
 			{
-				double adjusted = screenPoint.dist(holdCoords);
+				double adjustedDistance = pos.dist(hold.collisionPoint) * std::cos(std::atan2(x - ScreenWidth() / 2, -cameraDistance));
 
-				int height = std::min(ScreenHeight(), (int32_t)(ScreenHeight() * ScreenHeight() / adjusted));
+				int drawHeight = (int32_t)(ScreenHeight() * ScreenHeight() / std::max(1.0, adjustedDistance));
 
-				int blank = (ScreenHeight() - height) / 2;
+				int blank = (ScreenHeight() - drawHeight) / 2;
 
 				for (int y = blank; y <= ScreenHeight() - blank; y++)
 				{
-					Draw(x, y, olc::Pixel(hold->red, hold->green, hold->blue) / (float)(adjusted / 100.0));
+					olc::Pixel pixel = hold.sprite->GetPixel(
+						(int)(hold.sprite->width * hold.texturePosition),
+						(y - blank) * hold.sprite->height / (drawHeight + 2)
+					);
+					Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 1000.0));
 				}
 			}
+		}
+
+		SetPixelMode(olc::Pixel::ALPHA);
+		DrawPartialSprite(0, 0, &staticEffect, distHoriz(rng), distVert(rng), ScreenWidth(), ScreenHeight(), 1, 0);
+		SetPixelMode(olc::Pixel::NORMAL);
+		if (counter >= 0.16) {
+			counter = 0;
 		}
 		
 		//DrawString(0, 0, std::to_string(playerAngle * (180.0 / 3.14159)) + " " + std::to_string(playerX) + " " + std::to_string(playerY));
@@ -118,7 +159,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		draw();
+		draw(fElapsedTime);
 
 		update(fElapsedTime);
 
