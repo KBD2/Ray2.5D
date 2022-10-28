@@ -18,19 +18,5 @@ public:
 
 	olc::Sprite *sprite;
 
-	Wall()
-	{
-		a = Coords(0, 0);
-		b = Coords(0, 0);
-		sprite = NULL;
-	}
-
-	Wall(Coords _a, Coords _b, olc::Sprite *_sprite)
-	{
-		a = _a;
-		b = _b;
-		sprite = _sprite;
-	}
-
 	CollisionResult getCollision(Coords origin, Vec2 ray);
 };

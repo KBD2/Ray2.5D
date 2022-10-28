@@ -5,12 +5,11 @@
 #include <string>
 #include <random>
 
+#include "defs.hpp"
 #include "olcPixelGameEngine.h"
 #include "vec2.hpp"
 #include "wall.hpp"
-
-const float MOVE_UNITS_PER_SECOND = 400.0f;
-const int MAX_DRAW_DISTANCE = 2000;
+#include "collisionobject.hpp"
 
 class Game : public olc::PixelGameEngine
 {
@@ -21,12 +20,15 @@ public:
 	}
 
 	olc::Sprite wall;
+	olc::Sprite wallStone;
+
 	olc::Sprite background;
 	olc::Sprite staticEffect;
 
 	float playerAngle;
 	float mouseXHold;
-	Coords pos;
+
+	CollisionObject player;
 
 	double cameraDistance;
 
@@ -36,14 +38,20 @@ public:
 	bool OnUserCreate() override
 	{
 		wall = olc::Sprite("Resources/wall.png");
+		wallStone = olc::Sprite("Resources/wall_stone.png");
+
 		background = olc::Sprite("Resources/background.png");
 		staticEffect = olc::Sprite("Resources/static.png");
 
 		walls = {
-			Wall(Coords(-100, 100), Coords(-100, 300), &wall),
-			Wall(Coords(-100, 300), Coords(100, 300), &wall),
-			Wall(Coords(100, 300), Coords(100, 100), &wall)
+			Wall{ Coords(-100, 100), Coords(-100, 300), &wall },
+			Wall{ Coords(-100, 300), Coords(100, 300), &wall },
+			Wall{ Coords(100, 300), Coords(100, 100), &wall },
+			Wall{ Coords(100, 100), Coords(200, 0), &wallStone },
+			Wall{ Coords(200, 0), Coords(300, 300), &wallStone }
 		};
+
+		player = CollisionObject(Coords(), 40.0);
 
 		playerAngle = 0;
 		POINT mousePos;
@@ -57,17 +65,20 @@ public:
 
 	void draw(float fElapsedTime)
 	{
-		std::random_device dev;
-		std::mt19937 rng(dev());
-		std::uniform_int_distribution<std::mt19937::result_type> distHoriz(0, staticEffect.width - ScreenWidth());
-		std::uniform_int_distribution<std::mt19937::result_type> distVert(0, staticEffect.height - ScreenHeight());
-
 		static double counter = 0;
 		counter += fElapsedTime;
 
+		static int staticX, staticY;
+
+		std::random_device dev;
+		std::mt19937 rng(dev());
+
+		std::uniform_int_distribution<std::mt19937::result_type> distHoriz(0, staticEffect.width - ScreenWidth());
+		std::uniform_int_distribution<std::mt19937::result_type> distVert(0, staticEffect.height - ScreenHeight());
+
 		DrawSprite(0, 0, &background);
 
-		Coords cameraPoint = Coords(0, cameraDistance).rotate(playerAngle) + pos;
+		Coords cameraPoint = Coords(0, cameraDistance).rotate(playerAngle) + player.pos;
 
 		for (int x = 0; x < ScreenWidth(); x++)
 		{
@@ -79,15 +90,14 @@ public:
 				NULL
 			};
 
-			Coords screenPoint = Coords(x - ScreenWidth() / 2, 0).rotate(playerAngle) + pos;
+			Coords screenPoint = Coords(x - ScreenWidth() / 2, 0).rotate(playerAngle) + player.pos;
 
 			Vec2 ray = (screenPoint - cameraPoint).unit();
-			//Vec2 ray = Vec2(0, 1).rotate(playerAngle + 1.570796 * (double)(ScreenWidth() / 2 - x) / ScreenWidth());
 
 			for (auto& wall : walls)
 			{
-				CollisionResult collision = wall.getCollision(pos, ray);
-				double distance = collision.collisionPoint.dist(pos);
+				CollisionResult collision = wall.getCollision(player.pos, ray);
+				double distance = collision.collisionPoint.dist(player.pos);
 				if (!collision.didCollide || distance > MAX_DRAW_DISTANCE) continue;
 				else if (distance < nearest)
 				{
@@ -98,31 +108,33 @@ public:
 
 			if (hold.didCollide)
 			{
-				double adjustedDistance = pos.dist(hold.collisionPoint) * std::cos(std::atan2(x - ScreenWidth() / 2, -cameraDistance));
+				double adjustedDistance = player.pos.dist(hold.collisionPoint) * std::cos(std::atan2(x - ScreenWidth() / 2, -cameraDistance));
 
 				int drawHeight = (int32_t)(ScreenHeight() * ScreenHeight() / std::max(1.0, adjustedDistance));
 
 				int blank = (ScreenHeight() - drawHeight) / 2;
 
-				for (int y = blank; y <= ScreenHeight() - blank; y++)
+				for (int y = std::max(0, blank); y <= std::min(ScreenHeight(), ScreenHeight() - blank); y++)
 				{
 					olc::Pixel pixel = hold.sprite->GetPixel(
 						(int)(hold.sprite->width * hold.texturePosition),
 						(y - blank) * hold.sprite->height / (drawHeight + 2)
 					);
-					Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 1000.0));
+					Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
 				}
 			}
 		}
 
-		SetPixelMode(olc::Pixel::ALPHA);
-		DrawPartialSprite(0, 0, &staticEffect, distHoriz(rng), distVert(rng), ScreenWidth(), ScreenHeight(), 1, 0);
-		SetPixelMode(olc::Pixel::NORMAL);
-		if (counter >= 0.16) {
-			counter = 0;
-		}
-		
-		//DrawString(0, 0, std::to_string(playerAngle * (180.0 / 3.14159)) + " " + std::to_string(playerX) + " " + std::to_string(playerY));
+		//SetPixelMode(olc::Pixel::ALPHA);
+		//DrawPartialSprite(0, 0, &staticEffect, staticX, staticY, ScreenWidth(), ScreenHeight(), 1, 0);
+		//SetPixelMode(olc::Pixel::NORMAL);
+		//if (counter >= 0.016) {
+			//staticX = distHoriz(rng);
+			//staticY = distVert(rng);
+			//counter = 0;
+		//}
+
+		DrawString(0, 0, std::to_string(player.pos.x) + " " + std::to_string(player.pos.y));
 	}
 
 	void update(float fElapsedTime)
@@ -132,29 +144,16 @@ public:
 		playerAngle -= (mousePos.x - mouseXHold) / 100;
 		mouseXHold = (float)mousePos.x;
 
-		double sint = MOVE_UNITS_PER_SECOND * fElapsedTime * std::sin(playerAngle);
-		double cost = MOVE_UNITS_PER_SECOND * fElapsedTime * std::cos(playerAngle);
+		double sint = std::sin(playerAngle);
+		double cost = std::cos(playerAngle);
 
-		if (GetKey(olc::Key::W).bHeld)
-		{
-			pos.x -= sint;
-			pos.y += cost;
-		}
-		if (GetKey(olc::Key::S).bHeld)
-		{
-			pos.x += sint;
-			pos.y -= cost;
-		}
-		if (GetKey(olc::Key::A).bHeld)
-		{
-			pos.x -= cost;
-			pos.y -= sint;
-		}
-		if (GetKey(olc::Key::D).bHeld)
-		{
-			pos.x += cost;
-			pos.y += sint;
-		}
+		player.setVelocity(0, 0);
+		if (GetKey(olc::Key::W).bHeld) player.setVelocity(player.velocity + Vec2(-sint, cost));
+		if (GetKey(olc::Key::S).bHeld) player.setVelocity(player.velocity + Vec2(sint, -cost));
+		if (GetKey(olc::Key::A).bHeld) player.setVelocity(player.velocity + Vec2(-cost, -sint));
+		if (GetKey(olc::Key::D).bHeld) player.setVelocity(player.velocity + Vec2(cost, sint));
+
+		player.updatePhysics(fElapsedTime, walls);
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
