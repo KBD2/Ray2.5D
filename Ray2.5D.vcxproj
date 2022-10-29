@@ -26,6 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\collisionobject.hpp" />
+    <ClInclude Include="src\deco.hpp" />
     <ClInclude Include="src\defs.hpp" />
     <ClInclude Include="src\olcPixelGameEngine.h" />
     <ClInclude Include="src\vec2.hpp" />

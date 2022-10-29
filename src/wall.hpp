@@ -2,13 +2,7 @@
 
 #include "vec2.hpp"
 #include "olcPixelGameEngine.h"
-
-struct CollisionResult {
-	bool didCollide;
-	Coords collisionPoint;
-	double texturePosition;
-	olc::Sprite *sprite;
-};
+#include "defs.hpp"
 
 class Wall
 {

@@ -23,7 +23,7 @@ void CollisionObject::updatePhysics(float fElapsedTime, std::vector<Wall> &walls
 	{
 		Vec2 wallVec = wall.b - wall.a;
 
-		Coords projection = wallVec * ((pos - wall.a).dot(wallVec) / wallVec.dot(wallVec)) + wall.a;
+		Coords projection = (pos - wall.a).project(wallVec) + wall.a;
 
 		Vec2 projectionVec = projection - wall.a;
 

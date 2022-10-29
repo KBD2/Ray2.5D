@@ -31,6 +31,7 @@ public:
 	double dot(Vec2 b);
 	double cross(Vec2 b);
 	Vec2 rotate(double theta);
+	Vec2 project(Vec2 b);
 
 	bool operator==(Vec2 b);
 	bool operator!=(Vec2 b);

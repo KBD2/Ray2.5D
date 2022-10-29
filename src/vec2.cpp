@@ -68,6 +68,11 @@ Vec2 Vec2::rotate(double theta)
 	);
 }
 
+Vec2 Vec2::project(Vec2 b)
+{
+	return b.unit() * dot(b.unit());
+}
+
 bool Vec2::operator==(Vec2 b)
 {
 	return x == b.x && y == b.y;

@@ -10,10 +10,40 @@
 #include "vec2.hpp"
 #include "wall.hpp"
 #include "collisionobject.hpp"
+#include "deco.hpp"
 
 class Game : public olc::PixelGameEngine
 {
 public:
+	struct CollisionResult getSpriteCollision(Coords pos, olc::Sprite *sprite, Coords origin, Vec2 ray)
+	{
+		Vec2 projection = (pos - origin).project(ray);
+
+		Coords point = origin + projection;
+
+		double distance = point.dist(pos);
+
+		if (projection.unit().dist(ray) < 0.1 && distance <= sprite->width / 2)
+		{
+			double texturePos;
+			if (ray.cross((pos - origin)) > 0)
+				texturePos = (double)(sprite->width / 2 - distance) / sprite->width;
+			else texturePos = (double)(sprite->width / 2 + distance) / sprite->width;
+			return {
+				true,
+				point,
+				texturePos,
+				sprite
+			};
+		}
+		return {
+			false,
+			Coords(),
+			0.0,
+			NULL
+		};
+	}
+
 	Game()
 	{
 		sAppName = "Game";
@@ -27,6 +57,9 @@ public:
 	olc::Sprite background;
 	olc::Sprite staticEffect;
 
+	olc::Sprite skull;
+	olc::Sprite chandelier;
+
 	float playerAngle;
 
 	CollisionObject player;
@@ -34,6 +67,7 @@ public:
 	double cameraDistance;
 
 	std::vector<Wall> walls;
+	std::vector<Deco> decos;
 
 public:
 	bool OnUserCreate() override
@@ -44,12 +78,20 @@ public:
 		background = olc::Sprite("Resources/background.png");
 		staticEffect = olc::Sprite("Resources/static.png");
 
+		skull = olc::Sprite("Resources/skull.png");
+		chandelier = olc::Sprite("Resources/chandelier.png");
+
 		walls = {
 			Wall{ Coords(-100, 100), Coords(-100, 300), &wall },
 			Wall{ Coords(-100, 300), Coords(100, 300), &wall },
 			Wall{ Coords(100, 300), Coords(100, 100), &wall },
 			Wall{ Coords(100, 100), Coords(200, 0), &wallStone },
 			Wall{ Coords(200, 0), Coords(300, 300), &wallStone }
+		};
+
+		decos = {
+			Deco{ Coords(0, 150), &skull, false },
+			Deco{ Coords(-100, -100), &chandelier, true }
 		};
 
 		player = CollisionObject(Coords(), 40.0);
@@ -124,6 +166,54 @@ public:
 					Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
 				}
 			}
+
+			SetPixelMode(olc::Pixel::ALPHA);
+			for (auto& deco : decos)
+			{
+				CollisionResult collision = getSpriteCollision(deco.pos, deco.sprite, player.pos, ray);
+				double distance = collision.collisionPoint.dist(player.pos);
+				if (!collision.didCollide || distance > MAX_DRAW_DISTANCE) continue;
+				else if (distance < nearest)
+				{
+					double ratio = -cameraDistance / cameraPoint.dist(screenPoint);
+					double adjustedDistance = player.pos.dist(collision.collisionPoint) * ratio;
+
+					int height = deco.sprite->height;
+
+					int totalHeight = (int32_t)(ScreenHeight() * ScreenHeight() / std::max(1.0, adjustedDistance));
+
+					int drawHeight = totalHeight * height / ScreenHeight();
+
+					int blank = (ScreenHeight() - totalHeight) / 2;
+
+					if (deco.renderFromTop)
+					{
+						int startY = blank;
+						for (int y = std::max(0, startY); y < startY + drawHeight; y++)
+						{
+							olc::Pixel pixel = deco.sprite->GetPixel(
+								(int)(deco.sprite->width * collision.texturePosition),
+								(y - startY) * height / drawHeight
+							);
+							Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
+						}
+					}
+					else
+					{
+						int startY = ScreenHeight() - blank;
+						for (int y = std::min(ScreenHeight(), startY); y > startY - drawHeight; y--)
+						{
+							olc::Pixel pixel = deco.sprite->GetPixel(
+								(int)(deco.sprite->width * collision.texturePosition),
+								height - (startY - y) * height / drawHeight
+							);
+							Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
+						}
+					}
+					
+				}
+			}
+			SetPixelMode(olc::Pixel::NORMAL);
 		}
 
 		//SetPixelMode(olc::Pixel::ALPHA);
@@ -135,7 +225,7 @@ public:
 			//counter = 0;
 		//}
 
-		DrawString(0, 0, std::to_string(player.pos.x) + " " + std::to_string(player.pos.y));
+		//DrawString(0, 0, std::to_string(player.pos.x) + " " + std::to_string(player.pos.y));
 	}
 
 	bool update(float fElapsedTime)
@@ -150,7 +240,7 @@ public:
 			int middleY = windowPos.top + (windowPos.bottom - windowPos.top) / 2;
 			SetCursorPos(middleX, middleY);
 			
-			playerAngle -= (float)(mousePos.x - middleX) / 100;
+			playerAngle -= (float)(mousePos.x - middleX) / 300;
 		}
 		
 		double sint = std::sin(playerAngle);
@@ -176,11 +266,10 @@ public:
 	}
 };
 
-int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInsPrev, PSTR cmdline, int cmdshow)
+int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PSTR lpCmdline, _In_ int nCmdshow)
 {
 	Game game;
 	while (ShowCursor(false) >= 0);
-	if (game.Construct(320, 200, 3, 3))
-		game.Start();
+	if (game.Construct(320, 200, 3, 3)) game.Start();
 	return 0;
 }
