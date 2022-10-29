@@ -52,6 +52,7 @@ double Vec2::dot(Vec2 b)
 	return x * b.x + y * b.y;
 }
 
+// https://stackoverflow.com/a/2333334
 double Vec2::cross(Vec2 b)
 {
 	return x * b.y - b.x * y;

@@ -11,6 +11,8 @@ CollisionResult Wall::getCollision(Coords origin, Vec2 ray)
 		NULL
 	};
 
+	// https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+
 	Vec2 v1 = origin - a;
 	Vec2 v2 = b - a;
 	Vec2 v3 = Vec2(-ray.y, ray.x);

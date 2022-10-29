@@ -17,6 +17,8 @@ void CollisionObject::updatePhysics(float fElapsedTime, std::vector<Wall> &walls
 {
 	pos += velocity * (MOVE_UNITS_PER_SECOND * fElapsedTime);
 
+	// Circle-line segment algorithm improved from https://stackoverflow.com/a/1079478
+
 	for (auto& wall : walls)
 	{
 		Vec2 wallVec = wall.b - wall.a;

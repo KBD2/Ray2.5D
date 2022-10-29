@@ -19,6 +19,8 @@ public:
 		sAppName = "Game";
 	}
 
+	POINT mousePosHold;
+
 	olc::Sprite wall;
 	olc::Sprite wallStone;
 
@@ -26,7 +28,6 @@ public:
 	olc::Sprite staticEffect;
 
 	float playerAngle;
-	float mouseXHold;
 
 	CollisionObject player;
 
@@ -54,9 +55,6 @@ public:
 		player = CollisionObject(Coords(), 40.0);
 
 		playerAngle = 0;
-		POINT mousePos;
-		GetCursorPos(&mousePos);
-		mouseXHold = (float)mousePos.x;
 
 		cameraDistance = -(ScreenWidth() / 2) / std::tan(0.7854);
 
@@ -108,7 +106,10 @@ public:
 
 			if (hold.didCollide)
 			{
-				double adjustedDistance = player.pos.dist(hold.collisionPoint) * std::cos(std::atan2(x - ScreenWidth() / 2, -cameraDistance));
+				// Fisheye correction from https://www.playfuljs.com/a-first-person-engine-in-265-lines/
+				// Improved to get rid of the atan2 and cos calls
+				double ratio = -cameraDistance / cameraPoint.dist(screenPoint); // cos(t)=a/h
+				double adjustedDistance = player.pos.dist(hold.collisionPoint) * ratio;
 
 				int drawHeight = (int32_t)(ScreenHeight() * ScreenHeight() / std::max(1.0, adjustedDistance));
 
@@ -137,13 +138,21 @@ public:
 		DrawString(0, 0, std::to_string(player.pos.x) + " " + std::to_string(player.pos.y));
 	}
 
-	void update(float fElapsedTime)
+	bool update(float fElapsedTime)
 	{
 		POINT mousePos;
-		GetCursorPos(&mousePos);
-		playerAngle -= (mousePos.x - mouseXHold) / 100;
-		mouseXHold = (float)mousePos.x;
-
+		if (IsFocused())
+		{
+			RECT windowPos;
+			GetCursorPos(&mousePos);
+			GetWindowRect(GetForegroundWindow(), &windowPos);
+			int middleX = windowPos.left + (windowPos.right - windowPos.left) / 2;
+			int middleY = windowPos.top + (windowPos.bottom - windowPos.top) / 2;
+			SetCursorPos(middleX, middleY);
+			
+			playerAngle -= (float)(mousePos.x - middleX) / 100;
+		}
+		
 		double sint = std::sin(playerAngle);
 		double cost = std::cos(playerAngle);
 
@@ -152,23 +161,25 @@ public:
 		if (GetKey(olc::Key::S).bHeld) player.setVelocity(player.velocity + Vec2(sint, -cost));
 		if (GetKey(olc::Key::A).bHeld) player.setVelocity(player.velocity + Vec2(-cost, -sint));
 		if (GetKey(olc::Key::D).bHeld) player.setVelocity(player.velocity + Vec2(cost, sint));
+		if (GetKey(olc::Key::ESCAPE).bHeld) return false;
 
 		player.updatePhysics(fElapsedTime, walls);
+
+		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		draw(fElapsedTime);
 
-		update(fElapsedTime);
-
-		return true;
+		return update(fElapsedTime);
 	}
 };
 
-int main()
+int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInsPrev, PSTR cmdline, int cmdshow)
 {
 	Game game;
+	while (ShowCursor(false) >= 0);
 	if (game.Construct(320, 200, 3, 3))
 		game.Start();
 	return 0;
