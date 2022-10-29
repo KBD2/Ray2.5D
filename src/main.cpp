@@ -58,7 +58,9 @@ public:
 	olc::Sprite staticEffect;
 
 	olc::Sprite skull;
+	olc::Sprite skullEmissive;
 	olc::Sprite chandelier;
+	olc::Sprite chandelierEmissive;
 
 	float playerAngle;
 
@@ -79,7 +81,9 @@ public:
 		staticEffect = olc::Sprite("Resources/static.png");
 
 		skull = olc::Sprite("Resources/skull.png");
+		skullEmissive = olc::Sprite("Resources/skull_emissive.png");
 		chandelier = olc::Sprite("Resources/chandelier.png");
+		chandelierEmissive = olc::Sprite("Resources/chandelier_emissive.png");
 
 		walls = {
 			Wall{ Coords(-100, 100), Coords(-100, 300), &wall },
@@ -90,8 +94,8 @@ public:
 		};
 
 		decos = {
-			Deco{ Coords(0, 150), &skull, false },
-			Deco{ Coords(-100, -100), &chandelier, true }
+			Deco{ Coords(0, 150), &skull, &skullEmissive, false },
+			Deco{ Coords(-100, -100), &chandelier, &chandelierEmissive, true }
 		};
 
 		player = CollisionObject(Coords(), 40.0);
@@ -191,11 +195,14 @@ public:
 						int startY = blank;
 						for (int y = std::max(0, startY); y < startY + drawHeight; y++)
 						{
-							olc::Pixel pixel = deco.sprite->GetPixel(
-								(int)(deco.sprite->width * collision.texturePosition),
-								(y - startY) * height / drawHeight
-							);
-							Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
+							int textureX = (int)(deco.sprite->width * collision.texturePosition);
+							int textureY = (y - startY) * height / drawHeight;
+							olc::Pixel pixel = deco.sprite->GetPixel(textureX, textureY);
+							if (deco.emissive != NULL && deco.emissive->GetPixel(textureX, textureY).a > 128)
+							{
+								Draw(x, y, pixel);
+							}
+							else Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
 						}
 					}
 					else
@@ -203,11 +210,14 @@ public:
 						int startY = ScreenHeight() - blank;
 						for (int y = std::min(ScreenHeight(), startY); y > startY - drawHeight; y--)
 						{
-							olc::Pixel pixel = deco.sprite->GetPixel(
-								(int)(deco.sprite->width * collision.texturePosition),
-								height - (startY - y) * height / drawHeight
-							);
-							Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
+							int textureX = (int)(deco.sprite->width * collision.texturePosition);
+							int textureY = height - (startY - y) * height / drawHeight;
+							olc::Pixel pixel = deco.sprite->GetPixel(textureX, textureY);
+							if (deco.emissive != NULL && deco.emissive->GetPixel(textureX, textureY).ALPHA > 128)
+							{
+								Draw(x, y, pixel);
+							}
+							else Draw(x, y, pixel / (float)std::max(1.0, adjustedDistance / 300.0));
 						}
 					}
 					
