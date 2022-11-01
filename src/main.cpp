@@ -15,6 +15,7 @@
 class Game : public olc::PixelGameEngine
 {
 public:
+	// https://www.bluebill.net/circle_ray_intersection.html
 	struct CollisionResult getSpriteCollision(Coords pos, olc::Sprite *sprite, Coords origin, Vec2 ray)
 	{
 		Vec2 projection = (pos - origin).project(ray);
