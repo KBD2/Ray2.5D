@@ -24,8 +24,14 @@ void Vec2::operator+=(Vec2 n)
 
 double Vec2::length()
 {
-	return std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+	return std::sqrt(lengthSquared());
 }
+
+double Vec2::lengthSquared()
+{
+	return std::pow(x, 2) + std::pow(y, 2);
+}
+
 Vec2 Vec2::unit()
 {
 	return *this / length();
@@ -33,7 +39,12 @@ Vec2 Vec2::unit()
 
 double Vec2::dist(Vec2 b)
 {
-	return std::sqrt(std::pow(b.x - x, 2) + std::pow(b.y - y, 2));
+	return std::sqrt(distSquared(b));
+}
+
+double Vec2::distSquared(Vec2 b)
+{
+	return std::pow(b.x - x, 2) + std::pow(b.y - y, 2);
 }
 
 Vec2 Vec2::operator*(double n)

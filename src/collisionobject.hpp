@@ -11,12 +11,14 @@ public:
 	Coords pos;
 	double radius;
 	Vec2 velocity;
+	double angle;
 
 	CollisionObject()
 	{
 		pos = Coords();
 		radius = 100;
 		velocity = Vec2();
+		angle = 0.0;
 	}
 
 	CollisionObject(Coords _pos, double _radius)
@@ -24,6 +26,7 @@ public:
 		pos = _pos;
 		radius = _radius;
 		velocity = Vec2();
+		angle = 0.0;
 	}
 
 	void setVelocity(Vec2 velocity);

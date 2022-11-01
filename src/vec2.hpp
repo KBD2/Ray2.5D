@@ -25,11 +25,17 @@ public:
 	void operator*=(double n);
 	void operator+=(Vec2 n);
 
-	double length();
 	Vec2 unit();
+
+	double length();
+	double lengthSquared();
+
 	double dist(Vec2 b);
+	double distSquared(Vec2 b);
+
 	double dot(Vec2 b);
 	double cross(Vec2 b);
+
 	Vec2 rotate(double theta);
 	Vec2 project(Vec2 b);
 
